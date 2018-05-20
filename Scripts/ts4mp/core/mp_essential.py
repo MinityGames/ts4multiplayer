@@ -14,6 +14,44 @@ from ts4mp.core.csn import mp_chat
 from ts4mp.debug.log import ts4mp_log
 from ts4mp.core.mp_utils import get_sims_documents_directory
 from ts4mp.core.pending_client_commands import pending_commands_lock, pendable_functions, pending_commands
+from threading import Lock
+import inspect
+
+# Class to wrap Lock and simplify logging of lock usage
+class LogLock(object):
+    """
+    Wraps a standard Lock, so that attempts to use the
+    lock according to its API are logged for debugging purposes
+
+    """
+    def __init__(self, name):
+        self.name = str(name)
+        self.lock = Lock()
+        ts4mp_log("new_locks", "{0} created {1}".format(
+            inspect.stack()[1][3], self.name))
+
+    def acquire(self, blocking=True):
+        ts4mp_log("new_locks", "{0} trying to acquire {1}".format(
+            inspect.stack()[1][3], self.name))
+        ret = self.lock.acquire(blocking)
+        if ret == True:
+            ts4mp_log("new_locks", "{0} acquired {1}".format(
+                inspect.stack()[1][3], self.name))
+        else:
+            ts4mp_log("new_locks", "{0} non-blocking acquire of {1} lock failed".format(
+                inspect.stack()[1][3], self.name))
+        return ret
+
+    def release(self):
+        ts4mp_log("new_locks", "{0} releasing {1}".format(inspect.stack()[1][3], self.name))
+        self.lock.release()
+
+    def __enter__(self):
+        self.acquire()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.release()
+        return False # Do not swallow exceptions
 
 ALPHABETIC_REGEX = re.compile('[a-zA-Z]')
 
@@ -41,10 +79,12 @@ PERFORM_COMMAND_FUNCTIONS = {
 incoming_commands = list()
 outgoing_commands = list()
 
-outgoing_lock = Lock()
-incoming_lock = Lock()
+outgoing_lock = LogLock("outgoing")
+incoming_lock = LogLock("incoming")
 
 client_online = False
+
+
 def _do_command(command_name, *args):
     global PERFORM_COMMAND_FUNCTIONS
 
@@ -198,3 +238,4 @@ def _parse_arg(arg):
     ts4mp_log("arg_handler", str(new_arg) + "\n", force=False)
 
     return new_arg
+
