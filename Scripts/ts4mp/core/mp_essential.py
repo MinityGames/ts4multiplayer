@@ -30,7 +30,7 @@ class LogLock(object):
         ts4mp_log("new_locks", "{0} created {1}".format(
             inspect.stack()[1][3], self.name))
 
-    def acquire(self, blocking=True):
+    def __enter__(self, blocking=True):
         ts4mp_log("new_locks", "{0} trying to acquire {1}".format(
             inspect.stack()[1][3], self.name))
         ret = self.lock.acquire(blocking)
@@ -42,16 +42,9 @@ class LogLock(object):
                 inspect.stack()[1][3], self.name))
         return ret
 
-    def release(self):
+    def __exit__(self):
         ts4mp_log("new_locks", "{0} releasing {1}".format(inspect.stack()[1][3], self.name))
         self.lock.release()
-
-    def __enter__(self):
-        self.acquire()
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.release()
-        return False # Do not swallow exceptions
 
 ALPHABETIC_REGEX = re.compile('[a-zA-Z]')
 
