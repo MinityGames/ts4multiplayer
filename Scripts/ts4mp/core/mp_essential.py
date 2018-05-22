@@ -30,7 +30,7 @@ class LogLock(object):
         ts4mp_log("new_locks", "{0} created {1}".format(
             inspect.stack()[1][3], self.name))
 
-    def acquire(self, blocking=True):
+    def __enter__(self, blocking=True):
         ts4mp_log("new_locks", "{0} trying to acquire {1}".format(
             inspect.stack()[1][3], self.name))
         ret = self.lock.acquire(blocking)
@@ -41,7 +41,7 @@ class LogLock(object):
             ts4mp_log("new_locks", "{0} non-blocking acquire of {1} lock failed".format(
                 inspect.stack()[1][3], self.name))
 
-    def release(self):
+    def __exit__(self, exc_type=None, exc_val=None, exc_tb=None):
         ts4mp_log("new_locks", "{0} releasing {1}".format(inspect.stack()[1][3], self.name))
         self.lock.release()
 
