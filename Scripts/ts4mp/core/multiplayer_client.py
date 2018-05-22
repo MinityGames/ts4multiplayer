@@ -54,9 +54,14 @@ class Client:
                 except OSError as e:
                     ts4mp_log("locks", "acquiring incoming and outgoing lock")
 
-                    with outgoing_lock:
-                        with incoming_lock:
-                            self.__init__()
+                    outgoing_lock.acquire()
+                    incoming_lock.acquire()
+
+                    self.__init__()
+
+                    outgoing_lock.release()
+                    incoming_lock.release()
+
                     ts4mp_log("locks", "releasing incoming and outgoing lock")
 
                     ts4mp_log("network", "Network disconnect")
@@ -81,9 +86,14 @@ class Client:
                                 ts4mp.core.mp_essential.incoming_commands.append(new_command)
                     # time.sleep(1)
                 except OSError as e:
-                    with outgoing_lock:
-                        with incoming_lock:
-                            self.__init__()
+                    outgoing_lock.acquire()
+                    incoming_lock.acquire()
+
+                    self.__init__()
+
+                    outgoing_lock.release()
+                    incoming_lock.release()
+
                     ts4mp_log("network", "Network disconnect")
 
                     break

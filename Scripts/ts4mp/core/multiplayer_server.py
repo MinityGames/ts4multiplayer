@@ -45,11 +45,16 @@ class Server:
                         ts4mp_log("locks", "releasing outgoing lock for send")
                     except OSError as e:
                         ts4mp_log("locks", "acquiring incoming and outgoing lock")
-                        with outgoing_lock:
-                            with incoming_lock:
-                                self.__init__()
-                        ts4mp_log("locks", "releasing incoming and outgoing lock")
-                        ts4mp_log("network", "Network disconnect")
+                        outgoing_lock.acquire()
+                        incoming_lock.acquire()
+
+                        self.__init__()
+
+                        outgoing_lock.release()
+                        incoming_lock.release()
+
+            ts4mp_log("locks", "releasing incoming and outgoing lock")
+            ts4mp_log("network", "Network disconnect")
             ts4mp_log("locks", "releasing socket lock")
 
             # time.sleep(1)
@@ -86,13 +91,19 @@ class Server:
 
                 except OSError as e:
                     ts4mp_log("locks", "acquiring incoming and outgoing lock")
-                    with outgoing_lock:
-                        with incoming_lock:
-                            self.__init__()
+                    outgoing_lock.acquire()
+                    incoming_lock.acquire()
+
+                    self.__init__()
+
+                    outgoing_lock.release()
+                    incoming_lock.release()
+
                     ts4mp_log("locks", "releasing incoming and outgoing lock")
                     ts4mp_log("network", "Network disconnect")
 
                     break
+
     def kill(self):
         self.alive = False
 
