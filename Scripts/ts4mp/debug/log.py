@@ -4,8 +4,8 @@ from ts4mp.core.mp_utils import get_sims_documents_directory
 from threading import Lock
 
 fileLock = Lock()
-DEBUG_MODE = False
-
+DEBUG_MODE = True
+SAME_FILE = True
 
 def ts4mp_log(filename, string, force=False):
     global DEBUG_MODE
@@ -15,6 +15,8 @@ def ts4mp_log(filename, string, force=False):
 
     if filename == "locks":
         return
+    if SAME_FILE:
+        filename = "logs"
     logs_directory = "{}ts4mp_logs/".format(get_sims_documents_directory())
 
     if not os.path.exists(logs_directory):
