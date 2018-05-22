@@ -44,8 +44,7 @@ class Server:
 
                         ts4mp_log("locks", "releasing outgoing lock for send")
                     except OSError as e:
-                        ts4mp_log("locks", "acquiring incoming and outgoing lock")
-                        self.__init__()
+                        pass
             ts4mp_log("locks", "releasing incoming and outgoing lock")
             ts4mp_log("network", "Network disconnect")
             ts4mp_log("locks", "releasing socket lock")
