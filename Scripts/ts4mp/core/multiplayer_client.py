@@ -52,20 +52,6 @@ class Client:
                     ts4mp_log("locks", "releasing outgoing lock")
 
                 except OSError as e:
-                    ts4mp_log("locks", "acquiring incoming and outgoing lock")
-
-                    outgoing_lock.__enter__()
-                    incoming_lock.__enter__()
-
-                    self.__init__()
-
-                    outgoing_lock.release()
-                    incoming_lock.release()
-
-                    ts4mp_log("locks", "releasing incoming and outgoing lock")
-
-                    ts4mp_log("network", "Network disconnect")
-
                     break
 
             # time.sleep(1)

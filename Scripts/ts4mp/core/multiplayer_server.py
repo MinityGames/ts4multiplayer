@@ -90,18 +90,6 @@ class Server:
                         ts4mp_log("locks", "releasing incoming lock")
 
                 except OSError as e:
-                    ts4mp_log("locks", "acquiring incoming and outgoing lock")
-                    outgoing_lock.__enter__()
-                    incoming_lock.__enter__()
-
-                    self.__init__()
-
-                    outgoing_lock.__exit__()
-                    incoming_lock.__exit__()
-
-                    ts4mp_log("locks", "releasing incoming and outgoing lock")
-                    ts4mp_log("network", "Network disconnect")
-
                     break
 
     def kill(self):
