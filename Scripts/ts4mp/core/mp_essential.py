@@ -14,7 +14,7 @@ from ts4mp.core.csn import mp_chat
 from ts4mp.debug.log import ts4mp_log
 from ts4mp.core.mp_utils import get_sims_documents_directory
 from ts4mp.core.pending_client_commands import pending_commands_lock, pendable_functions, pending_commands
-from threading import Lock
+from threading import Lock, RLock
 import inspect
 
 # Class to wrap Lock and simplify logging of lock usage
@@ -40,9 +40,8 @@ class LogLock(object):
         else:
             ts4mp_log("new_locks", "{0} non-blocking acquire of {1} lock failed".format(
                 inspect.stack()[1][3], self.name))
-        return ret
 
-    def __exit__(self):
+    def __exit__(self, exc_type, exc_val, exc_tb):
         ts4mp_log("new_locks", "{0} releasing {1}".format(inspect.stack()[1][3], self.name))
         self.lock.release()
 
