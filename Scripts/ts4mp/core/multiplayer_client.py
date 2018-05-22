@@ -29,17 +29,6 @@ class Client:
 
     def send_loop(self):
         while self.alive:
-            try:
-                ts4mp_log("locks", "acquiring socket lock")
-
-                with socket_lock:
-                    self.serversocket.connect((self.host, self.port))
-                ts4mp_log("locks", "releasing socket lock")
-
-                self.connected = True
-            except:
-                # server isn't online
-                pass
 
             while self.alive:
                 try:
@@ -58,6 +47,15 @@ class Client:
 
     def listen_loop(self):
         while self.alive:
+            try:
+                ts4mp_log("client", "attempting to connect to server")
+                self.serversocket.connect((self.host, self.port))
+                ts4mp_log("client", "connected to server")
+
+                self.connected = True
+            except:
+                # server isn't online
+                pass
 
             serversocket = self.serversocket
             size = None
@@ -72,13 +70,7 @@ class Client:
                                 ts4mp.core.mp_essential.incoming_commands.append(new_command)
                     # time.sleep(1)
                 except OSError as e:
-                    outgoing_lock.__enter__()
-                    incoming_lock.__enter__()
-
                     self.__init__()
-
-                    outgoing_lock.__exit__()
-                    incoming_lock.__exit__()
 
                     ts4mp_log("network", "Network disconnect")
 
