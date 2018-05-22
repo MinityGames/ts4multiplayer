@@ -47,15 +47,16 @@ class Client:
 
     def listen_loop(self):
         while self.alive:
-            try:
-                ts4mp_log("client", "attempting to connect to server")
-                self.serversocket.connect((self.host, self.port))
-                ts4mp_log("client", "connected to server")
+            while not self.connected:
+                try:
+                    ts4mp_log("client", "attempting to connect to server")
+                    self.serversocket.connect((self.host, self.port))
+                    ts4mp_log("client", "connected to server")
 
-                self.connected = True
-            except:
-                # server isn't online
-                pass
+                    self.connected = True
+                except:
+                    # server isn't online
+                    pass
 
             serversocket = self.serversocket
             size = None
