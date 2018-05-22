@@ -4,7 +4,7 @@ from ts4mp.core.mp_utils import get_sims_documents_directory
 from threading import Lock
 
 fileLock = Lock()
-DEBUG_MODE = True
+DEBUG_MODE = False
 
 
 def ts4mp_log(filename, string, force=False):
