@@ -62,12 +62,20 @@ class Client:
             data = b''
 
             while self.alive:
+                ts4mp_log("client", "Attempting to listen...")
                 try:
                     if self.connected:
+                        ts4mp_log("client", "Client is connected")
+
                         new_command, data, size = generic_listen_loop(serversocket, data, size)
                         if new_command is not None:
+                            ts4mp_log("client", "New command received")
+
                             with incoming_lock:
                                 ts4mp.core.mp_essential.incoming_commands.append(new_command)
+                    else:
+                        ts4mp_log("client", "Client is not connected")
+
                     # time.sleep(1)
                 except OSError as e:
                     self.__init__()
