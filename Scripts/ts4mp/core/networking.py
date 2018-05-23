@@ -22,7 +22,7 @@ def generic_send_loop(data, socket):
 
 def generic_listen_loop(socket, data, size):
     new_command = None
-    # ts4mp_log_debug("receive", "{}, {} \n".format(size, sys.getsizeof(data)))
+    s4mp_log("receive", "{}, {} \n".format(size, sys.getsizeof(data)))
     if size is None:
         size = socket.recv(8)
         try:
