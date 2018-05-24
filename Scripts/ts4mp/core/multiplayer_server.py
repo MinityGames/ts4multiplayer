@@ -53,8 +53,6 @@ class Server:
 
     def listen_loop(self):
         while self.alive:
-
-
             ts4mp_log("network", "Listening for clients")
 
             self.serversocket.listen(5)
@@ -82,6 +80,7 @@ class Server:
                         ts4mp_log("locks", "releasing incoming lock")
 
                 except OSError as e:
+                    ts4mp_log("network", "{}".format(e))
                     break
 
     def kill(self):
