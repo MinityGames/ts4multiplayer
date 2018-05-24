@@ -56,14 +56,9 @@ def send_message_server(self, msg_id, msg):
         # ts4mp_log_debug("msg", msg)
     else:
         message = Message(msg_id, msg.SerializeToString())
-
-        ts4mp_log("locks", "acquiring outgoing lock")
-
         # We use a lock here because outgoing_commands is also being altered by the client socket thread.
         with outgoing_lock:
             outgoing_commands.append(message)
-
-        ts4mp_log("locks", "releasing outgoing lock")
 
 
 def send_message_client(self, msg_id, msg):

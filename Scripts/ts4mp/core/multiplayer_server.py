@@ -30,24 +30,17 @@ class Server:
 
     def send_loop(self):
         while self.alive:
-            ts4mp_log("locks", "acquiring socket lock")
 
             with socket_lock:
                 if self.clientsocket is not None:
-                    try:
-                        ts4mp_log("locks", "acquiring outgoing lock for send")
-
-                        with outgoing_lock:
+                    with outgoing_lock:
+                        try:
                             for data in outgoing_commands:
                                 generic_send_loop(data, self.clientsocket)
                                 outgoing_commands.remove(data)
-
-                        ts4mp_log("locks", "releasing outgoing lock for send")
-                    except OSError as e:
-                        pass
-            ts4mp_log("locks", "releasing incoming and outgoing lock")
-            ts4mp_log("network", "Network disconnect")
-            ts4mp_log("locks", "releasing socket lock")
+                        except OSError as e:
+                            ts4mp_log("network", "{}".format(e))
+                            self.__init__()
 
             # time.sleep(1)
 
@@ -80,7 +73,7 @@ class Server:
                         ts4mp_log("locks", "releasing incoming lock")
 
                 except OSError as e:
-                    ts4mp_log("network", "{}".format(e))
+                    # ts4mp_log("network", "{}".format(e))
                     break
 
     def kill(self):
