@@ -1,2 +1,2 @@
-HOST = "0.tcp.ngrok.io"
-PORT = 19900
+HOST = "10.147.17.245"
+PORT = 9993
