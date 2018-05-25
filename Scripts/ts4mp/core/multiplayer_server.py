@@ -54,11 +54,9 @@ class Server:
             clientsocket, address = self.serversocket.accept()
 
             ts4mp_log("network", "Client Connect")
-            ts4mp_log("locks", "acquiring socket lock")
 
             with socket_lock:
                 self.clientsocket = clientsocket
-            ts4mp_log("locks", "releasing socket lock")
 
             size = None
             data = b''
@@ -67,11 +65,8 @@ class Server:
                 try:
                     new_command, data, size = generic_listen_loop(clientsocket, data, size)
                     if new_command is not None:
-                        ts4mp_log("locks", "acquiring incoming lock")
-
                         with incoming_lock:
                             ts4mp.core.mp_essential.incoming_commands.append(new_command)
-                        ts4mp_log("locks", "releasing incoming lock")
 
                 except OSError as e:
                     # ts4mp_log("network", "{}".format(e))
