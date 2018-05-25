@@ -2,8 +2,9 @@ import socket
 import threading
 
 import ts4mp
+import ts4mp.core.mp_essential
 from ts4mp.debug.log import ts4mp_log
-from ts4mp.core.mp_essential import outgoing_lock, outgoing_commands
+from ts4mp.core.mp_essential import outgoing_lock
 from ts4mp.core.mp_essential import incoming_lock
 from ts4mp.core.networking import generic_send_loop, generic_listen_loop, socket_lock
 from ts4mp.configs.server_config import HOST, PORT
@@ -35,9 +36,9 @@ class Server:
                 if self.clientsocket is not None:
                     with outgoing_lock:
                         try:
-                            for data in outgoing_commands:
+                            for data in ts4mp.core.mp_essential.outgoing_commands:
                                 generic_send_loop(data, self.clientsocket)
-                                outgoing_commands.remove(data)
+                                ts4mp.core.mp_essential.outgoing_commands.remove(data)
                         except OSError as e:
                             ts4mp_log("network", "{}".format(e))
                             self.__init__()
