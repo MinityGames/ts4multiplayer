@@ -32,16 +32,15 @@ class Server:
     def send_loop(self):
         while self.alive:
 
-            with socket_lock:
-                if self.clientsocket is not None:
-                    with outgoing_lock:
-                        try:
+            if self.clientsocket is not None:
+                    try:
+                        with outgoing_lock:
                             for data in ts4mp.core.mp_essential.outgoing_commands:
                                 generic_send_loop(data, self.clientsocket)
                                 ts4mp.core.mp_essential.outgoing_commands.remove(data)
-                        except OSError as e:
-                            ts4mp_log("network", "{}".format(e))
-                            self.__init__()
+                    except OSError as e:
+                        ts4mp_log("network", "{}".format(e))
+                        self.__init__()
 
             # time.sleep(1)
 
