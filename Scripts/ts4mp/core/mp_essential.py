@@ -26,7 +26,7 @@ class LogLock(object):
     """
     def __init__(self, name):
         self.name = str(name)
-        self.lock = Lock()
+        self.lock = RLock()
         ts4mp_log("new_locks", "{0} created {1}".format(
             inspect.stack()[1][3], self.name))
 
