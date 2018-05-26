@@ -44,7 +44,7 @@ outgoing_commands = list()
 outgoing_lock = Lock()
 incoming_lock = Lock()
 
-
+client_online = False
 def _do_command(command_name, *args):
     global PERFORM_COMMAND_FUNCTIONS
 
@@ -92,11 +92,10 @@ def get_file_matching_name(name):
 # TODO: Any kind of documentation for any of this so it's easier to understand in a year?
 def client_sync():
     ts4mp_log("locks", "acquiring incoming lock 1")
+    ts4mp_log("simulate", "Syncing client.")
 
     with incoming_lock:
         global incoming_commands
-
-        ts4mp_log("receive", "{} \n".format(len(incoming_commands)))
 
         client_manager = services.client_manager()
         client = None
@@ -106,7 +105,9 @@ def client_sync():
 
             if client is None:
                 return
-
+        else:
+            return
+        ts4mp_log("simulate", "Sending {} commands.".format(len(incoming_commands)), force=False)
         for unpacked_msg_data in incoming_commands:
             if type(unpacked_msg_data) is Message:
                 omega.send(client.id, unpacked_msg_data.msg_id, unpacked_msg_data.msg)
