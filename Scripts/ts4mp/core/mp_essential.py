@@ -9,7 +9,7 @@ from server_commands.interaction_commands import has_choices, generate_choices, 
 from server_commands.lighting_commands import set_color_and_intensity
 from server_commands.sim_commands import set_active_sim
 from server_commands.ui_commands import ui_dialog_respond, ui_dialog_pick_result, ui_dialog_text_input
-
+from server_commands.career_commands import find_career, select_career
 from ts4mp.core.csn import mp_chat
 from ts4mp.debug.log import ts4mp_log
 from ts4mp.core.mp_utils import get_sims_documents_directory
@@ -35,6 +35,8 @@ PERFORM_COMMAND_FUNCTIONS = {
     "ui_dialog_pick_result"   : ui_dialog_pick_result,
     "ui_dialog_text_input"    : ui_dialog_text_input,
     "set_color_and_intensity" : set_color_and_intensity,
+    "careers.find_career"     : find_career,
+    "careers.select"          : select_career
 }
 
 # TODO: Consider having a class that holds these instead of them being out in the open
