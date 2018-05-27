@@ -30,7 +30,7 @@ class Timer():
     def __exit__(self, *args):
         self.t2 = time.time()
         # if (self.t2 - self.t1) * 1000 > 50:
-        ts4mp_log("Command path plan time: {}".format((self.t2 - self.t1) * 1000))
+        ts4mp_log("Command path plan", "Command path plan time: {}".format((self.t2 - self.t1) * 1000))
 
 
 def generate_path(self, timeline):
