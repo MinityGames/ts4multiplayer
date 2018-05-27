@@ -25,6 +25,8 @@ def generic_listen_loop(socket, data, size):
         new_data = socket.recv(bytes_to_receive)
         data += new_data
     elif size == sys.getsizeof(data):
+        ts4mp_log("receive", "Received new command with {} bytes of data".format(sys.getsizeof(data)))
+
         data = pickle.loads(data)
 
         ts4mp_log("locks", "acquiring incoming lock")
@@ -35,6 +37,5 @@ def generic_listen_loop(socket, data, size):
 
         size = None
         data = b''
-        ts4mp_log("receive", "Received new command with {} bytes of data".format(sys.getsizeof(new_command)))
 
     return new_command, data, size
