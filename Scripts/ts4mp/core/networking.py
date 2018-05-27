@@ -35,6 +35,6 @@ def generic_listen_loop(socket, data, size):
 
         size = None
         data = b''
-        ts4mp_log("receive", "Received new command with {} bytes of data".format(sys.getsizeof(data)))
+        ts4mp_log("receive", "Received new command with {} bytes of data".format(sys.getsizeof(new_command)))
 
     return new_command, data, size
