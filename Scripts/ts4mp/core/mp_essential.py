@@ -14,6 +14,7 @@ from ts4mp.core.csn import mp_chat
 from ts4mp.debug.log import ts4mp_log
 from ts4mp.core.mp_utils import get_sims_documents_directory
 from ts4mp.core.pending_client_commands import pending_commands_lock, pendable_functions, pending_commands
+import ts4mp.routing.multithreader
 
 ALPHABETIC_REGEX = re.compile('[a-zA-Z]')
 
@@ -45,6 +46,8 @@ outgoing_lock = Lock()
 incoming_lock = Lock()
 
 client_online = False
+
+
 def _do_command(command_name, *args):
     global PERFORM_COMMAND_FUNCTIONS
 
@@ -57,10 +60,23 @@ def _do_command(command_name, *args):
 
 
 # TODO: Less generic names
-class Message:
+class ProtocolBufferMessage:
     def __init__(self, msg_id, msg):
         self.msg_id = msg_id
         self.msg = msg
+
+
+class PathCloudComputing:
+    def __init__(self, path_id, sim, goal):
+        self.path_id = path_id
+        self.sim = sim
+        self.goal = goal
+
+
+class PathCloudComputingResult:
+    def __init__(self, path_id, path):
+        self.path_id = path_id
+        self.path = path
 
 
 class File:
@@ -109,7 +125,7 @@ def client_sync():
             return
         ts4mp_log("simulate", "Sending {} commands.".format(len(incoming_commands)), force=False)
         for unpacked_msg_data in incoming_commands:
-            if type(unpacked_msg_data) is Message:
+            if type(unpacked_msg_data) is ProtocolBufferMessage:
                 omega.send(client.id, unpacked_msg_data.msg_id, unpacked_msg_data.msg)
                 incoming_commands.remove(unpacked_msg_data)
             elif type(unpacked_msg_data) is File:
@@ -121,6 +137,9 @@ def client_sync():
                 client_file.close()
 
                 incoming_commands.remove(unpacked_msg_data)
+            elif isinstance(unpacked_msg_data, PathCloudComputingResult):
+                incoming_commands.remove(unpacked_msg_data)
+
 
     ts4mp_log("locks", "releasing incoming lock")
 

@@ -18,7 +18,7 @@ from ts4mp.core.csn import mp_chat
 from ts4mp.utils.native.decorator import decorator
 from ts4mp.debug.log import ts4mp_log
 from ts4mp.core.mp import is_client
-from ts4mp.core.mp_essential import Message, outgoing_lock, outgoing_commands, client_sync, server_sync
+from ts4mp.core.mp_essential import ProtocolBufferMessage, outgoing_lock, outgoing_commands, client_sync, server_sync
 from ts4mp.utils.native.undecorated import undecorated
 
 COMMAND_FUNCTIONS = {
@@ -55,7 +55,7 @@ def send_message_server(self, msg_id, msg):
         omega.send(self.id, msg_id, msg.SerializeToString())
         # ts4mp_log_debug("msg", msg)
     else:
-        message = Message(msg_id, msg.SerializeToString())
+        message = ProtocolBufferMessage(msg_id, msg.SerializeToString())
 
         ts4mp_log("locks", "acquiring outgoing lock")
 
