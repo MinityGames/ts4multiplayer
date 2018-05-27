@@ -39,11 +39,6 @@ def add_client_sims(_connection=None):
     client = services.client_manager().get(1000)
     first_client = services.client_manager().get_first_client()
 
-    for sim in client._selectable_sims:
-        output(str(sim))
-
-    output(str(len(client._selectable_sims)))
-
     for sim_info in first_client._selectable_sims:
         client._selectable_sims.add_selectable_sim_info(sim_info)
 
