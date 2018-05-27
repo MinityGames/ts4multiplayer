@@ -136,7 +136,7 @@ class SystemDistributor:
                 if isinstance(op.protocol_buffer, CareerSelectionUI):
                     target_client_distributor = self.get_distributor_with_active_sim_matching_sim_id(obj.id)
                     target_client_distributor.add_op(obj, op)
-
+                    return
         self.journal.add(obj, op)
 
     def add_op_with_no_owner(self, op):
