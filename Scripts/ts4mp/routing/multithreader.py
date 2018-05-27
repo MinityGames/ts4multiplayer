@@ -16,7 +16,7 @@ from ui.ui_dialog_notification import UiDialogNotification
 
 def show_notif(time):
     try:
-        notification = UiDialogNotification.TunableFactory().default(services.get_active_sim(), text=lambda **_: LocalizationHelperTuning.get_raw_text("Path took: {} ms".format(time)))
+        notification = UiDialogNotification.TunableFactory().default(services.get_active_sim(), text=lambda **_: LocalizationHelperTuning.get_raw_text("Path took: {} ms".format(time * 1000)))
         notification.show_dialog()
 
     except Exception as e:
