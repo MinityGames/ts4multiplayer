@@ -55,7 +55,7 @@ class Timer():
         # if (self.t2 - self.t1) * 1000 > 50:
         ts4mp_log("Command path plan", "Command path plan time: {}".format((self.t2 - self.t1) * 1000))
 
-
+import _pathing
 def generate_path(self, timeline):
     #ts4mp_log("Path plan time", "Starting path")
 
@@ -77,32 +77,54 @@ def generate_path(self, timeline):
                     waypoint.group = waypoint_group
                     self.path.add_waypoint(waypoint)
             self.sim.routing_component.on_plan_path(self.route.goals, True)
-            if self.path.nodes.make_path() is True:
-                plan_in_progress = True
+            if True:
+                if self.path.nodes.make_path() is True:
+                    plan_in_progress = True
 
-                def is_planning_done():
-                    #ts4mp_log("Path plan time", "Calculating path")
+                    def is_planning_done():
+                        #ts4mp_log("Path plan time", "Calculating path")
 
-                    nonlocal ticks, plan_in_progress
-                    ticks += 1
-                    plan_in_progress = self.path.nodes.plan_in_progress
-                    return not plan_in_progress
+                        nonlocal ticks, plan_in_progress
+                        ticks += 1
+                        plan_in_progress = self.path.nodes.plan_in_progress
+                        return not plan_in_progress
 
-                yield from element_utils.run_child(timeline, elements.BusyWaitElement(soft_sleep_forever(), is_planning_done))
-                if plan_in_progress:
-                    self.path.status = routing.Path.PLANSTATUS_FAILED
+                    yield from element_utils.run_child(timeline, elements.BusyWaitElement(soft_sleep_forever(), is_planning_done))
+                    if plan_in_progress:
+                        self.path.status = routing.Path.PLANSTATUS_FAILED
+                    else:
+                        #ts4mp_log("Path plan time", "Done with path")
+
+                        self.path.nodes.finalize(self._is_failure_route)
                 else:
-                    #ts4mp_log("Path plan time", "Done with path")
-
-                    self.path.nodes.finalize(self._is_failure_route)
+                    self.path.status = routing.Path.PLANSTATUS_FAILED
             else:
-                self.path.status = routing.Path.PLANSTATUS_FAILED
+                try:
+                    #ts4mp_log("errors", dir(self.path.nodes))
+                    ts4mp_log("errors", dir(goal))
+                    routing_location = routing.Location(goal.position, goal.orientation,
+                                                        goal.routing_surface_id)
+                    walkstyle = sims4.hash_util.hash32("walk")
+
+                    self.path.nodes.add_node(routing_location, 0, 0, walkstyle)
+                    self.path.nodes.add_node(routing_location, 1, 1, walkstyle)
+
+                except Exception as e:
+                    ts4mp_log("errors", str(e))
+     
+
             new_route = routing.Route(self.route.origin, self.route.goals, additional_origins=self.route.origins, routing_context=self.route.context)
             new_route.path.copy(self.route.path)
             new_path = routing.Path(self.path.sim, new_route)
             new_path.status = self.path.status
             new_path._start_ids = self.path._start_ids
+            #ts4mp_log("errors", dir(self.path.nodes[0]))
+            #new_path._start_ids = [self.path.nodes[0].handle]
+
+
             new_path._goal_ids = self.path._goal_ids
+            #new_path._goal_ids = [self.path.nodes[1].handle]
+
             result_path = new_path
             if gsi_handlers.routing_handlers.archiver.enabled:
                 gsi_handlers.routing_handlers.archive_plan(self.sim, self.path, ticks, (time.time() - start_time))
@@ -331,5 +353,53 @@ def simulate(self, until, max_elements=MAX_ELEMENTS, max_time_ms=None):
         return False
     except Exception as e:
         ts4mp_log("errors", str(e))
-
+import distributor
+import math
+@sims4.commands.Command('sims.test_path', command_type = CommandType.Live)
+def test_path(walkstyle_name='walk', _connection=None):
+    obj = services.get_active_sim()
+    try:
+        if obj is not None:
+            route = routing.Route(routing.Location(obj.location.transform.translation, obj.location.transform.orientation, obj.location.routing_surface), ())
+            path = routing.Path(obj, route)
+            path.status = routing.Path.PLANSTATUS_READY
+            start_pos = obj.location.transform.translation
+            last_pos = start_pos
+            start_surface = obj.location.routing_surface
+            walkstyle = sims4.hash_util.hash32(walkstyle_name)
+            (walk_duration, walk_distance) = routing.get_walkstyle_info(walkstyle, obj.age, obj.gender, obj.species)
+            speed = walk_distance/walk_duration
+            a = 2.5
+            b = 0.1
+            last_time = 0
+            for i in range(51):
+                angle = i*0.25120000000000003
+                x = (a + b*angle)*math.cos(angle)
+                y = (a + b*angle)*math.sin(angle)
+                pos = sims4.math.Vector3(start_pos.x + x, start_pos.y + i*0.1, start_pos.z + y)
+                dir = pos - last_pos
+                orientation = sims4.math.Quaternion.from_forward_vector(dir)
+                if i == 0:
+                    path.nodes.add_node(routing.Location(start_pos, orientation, start_surface), 0, 0, walkstyle)
+                time = last_time + dir.magnitude()/speed
+                path.nodes.add_node(routing.Location(pos, orientation, start_surface), time, 0, walkstyle)
+                last_time = time
+                last_pos = pos
+            pos = sims4.math.Vector3(start_pos.x, start_pos.y, start_pos.z)
+            dir = pos - last_pos
+            orientation = sims4.math.Quaternion.from_forward_vector(dir)
+            time = last_time + dir.magnitude()/speed
+            path.nodes.add_node(routing.Location(pos, orientation, start_surface), time, 0, walkstyle)
+            zone_id = obj.zone_id
+            zone = services._zone_manager.get(zone_id)
+            start_time = services.game_clock_service().monotonic_time()
+            op = distributor.ops.FollowRoute(obj, path, start_time)
+            distributor.ops.record(obj, op)
+            final_path_node = path.nodes[-1]
+            final_position = sims4.math.Vector3(*final_path_node.position)
+            final_orientation = sims4.math.Quaternion(*final_path_node.orientation)
+            transform = sims4.math.Transform(final_position, final_orientation)
+            obj.location = obj.location.clone(routing_surface=start_surface, transform=transform)
+    except Exception as e:
+        ts4mp_log("errors", str(e))
 scheduling.Timeline.simulate = simulate
