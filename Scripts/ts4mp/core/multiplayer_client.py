@@ -12,7 +12,7 @@ from ts4mp.core.mp_essential import incoming_lock
 class Client:
     def __init__(self):
         self.serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.serversocket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        #self.serversocket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         self.host = HOST
         self.port = PORT
         self.alive = True
