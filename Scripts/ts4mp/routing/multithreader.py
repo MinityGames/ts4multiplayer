@@ -11,9 +11,20 @@ import routing
 #ts4mp.reload Mods/ts4multiplayer/Scripts/ts4mp/routing/multithreader
 
 gsi_handlers.routing_handlers.archiver._archive_enabled = True
+from sims4.localization import LocalizationHelperTuning
+from ui.ui_dialog_notification import UiDialogNotification
 
+def show_notif(time):
+    try:
+        notification = UiDialogNotification.TunableFactory().default(services.get_active_sim(), text=lambda **_: LocalizationHelperTuning.get_raw_text("Path took: {} ms".format(time)))
+        notification.show_dialog()
+
+    except Exception as e:
+        ts4mp_log("errors", str(e))
 
 def archive_plan(planner, path, ticks, time):
+    if time > 0.01:
+        show_notif(time)
     ts4mp_log("Path plan time", "Plan Time, Ticks: {}, {}".format(time, ticks))
 
 import services
@@ -22,6 +33,13 @@ gsi_handlers.routing_handlers.archive_plan = archive_plan
 
 cloud_paths_lock = Lock()
 cloud_paths = []
+
+
+
+
+# TODO: Complete overhaul and streamlined L18N support
+from ts4mp.debug.log import ts4mp_log
+
 
 
 class Timer():
@@ -39,7 +57,7 @@ class Timer():
 
 
 def generate_path(self, timeline):
-    ts4mp_log("Path plan time", "Starting path")
+    #ts4mp_log("Path plan time", "Starting path")
 
     start_time = time.time()
     ticks = 0
@@ -63,7 +81,7 @@ def generate_path(self, timeline):
                 plan_in_progress = True
 
                 def is_planning_done():
-                    ts4mp_log("Path plan time", "Calculating path")
+                    #ts4mp_log("Path plan time", "Calculating path")
 
                     nonlocal ticks, plan_in_progress
                     ticks += 1
@@ -74,7 +92,7 @@ def generate_path(self, timeline):
                 if plan_in_progress:
                     self.path.status = routing.Path.PLANSTATUS_FAILED
                 else:
-                    ts4mp_log("Path plan time", "Done with path")
+                    #ts4mp_log("Path plan time", "Done with path")
 
                     self.path.nodes.finalize(self._is_failure_route)
             else:
