@@ -141,15 +141,16 @@ def send_lot_architecture_and_reload(_connection=None):
 
 
 @sims4.commands.Command('change_persona', command_type=sims4.commands.CommandType.Live)
-def change_persona(name:str, _connection=None):
+def change_persona(name: str, _connection=None):
     output = sims4.commands.CheatOutput(_connection)
     client = services.client_manager().get_first_client()
 
     client._account._persona_name = name
     output("Your new persona name is: {}".format(client._account._persona_name))
 
+
 @sims4.commands.Command('change_client_persona', command_type=sims4.commands.CommandType.Live)
-def change_client_persona(name:str, _connection=None):
+def change_client_persona(name: str, _connection=None):
     output = sims4.commands.CheatOutput(_connection)
     client = services.client_manager().get_client_by_account(1000)
     if client is None:

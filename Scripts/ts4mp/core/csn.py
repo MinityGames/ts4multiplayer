@@ -15,6 +15,8 @@ from ts4mp.debug.log import ts4mp_log
 
 def show_notif(sim, text):
     title = "{} said".format(Distributor.instance().get_distributor_with_active_sim_matching_sim_id(sim.id).client._account.persona_name)
+    ts4mp_log("chat", LocalizationHelperTuning.get_raw_text(text))
+
     notification = UiDialogNotification.TunableFactory().default(sim, text=lambda **_: LocalizationHelperTuning.get_raw_text(text), title=lambda **_: LocalizationHelperTuning.get_raw_text(title))
     notification.show_dialog(icon_override=(None, sim))
 
@@ -25,7 +27,7 @@ class Scum_TextInputLengthName(HasTunableSingletonFactory, AutoFactoryInit):
     def build_msg(self, dialog, msg, *additional_tokens):
         msg.max_length = 100
         msg.min_length = 1
-        msg.input_too_short_tooltip = LocalizationHelperTuning.get_raw_text("Names must contain at least one character!")
+        msg.input_too_short_tooltip = LocalizationHelperTuning.get_raw_text("You must enter at least one character!")
 
 
 @sims4.commands.Command('mp_chat', command_type=sims4.commands.CommandType.Live)
@@ -41,6 +43,7 @@ def mp_chat(target_id=None, _connection=None):
 
         def enter_dialog_callback(dialog):
             if not dialog.accepted:
+                ts4mp_log("chat", "Dialog was not accepted.")
                 return
             dialog_text = dialog.text_input_responses.get("dialog")
             ts4mp_log("chat", 'Showing message')
