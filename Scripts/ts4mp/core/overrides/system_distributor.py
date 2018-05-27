@@ -9,8 +9,11 @@ from distributor.system import Journal, _distributor_log_enabled
 from gsi_handlers.distributor_handlers import archive_operation
 from protocolbuffers import Distributor_pb2
 from protocolbuffers.Consts_pb2 import MSG_OBJECTS_VIEW_UPDATE
+from protocolbuffers.Sims_pb2 import CareerSelectionUI
 from server.client import Client
 from sims4.callback_utils import consume_exceptions
+from distributor.ops import GenericProtocolBufferOp
+from protocolbuffers.DistributorOps_pb2 import Operation
 
 from ts4mp.debug.log import ts4mp_log
 from ts4mp.core.pending_client_commands import get_command_function_from_pb, try_get_client_id_of_pending_command, remove_earliest_command_client
@@ -123,8 +126,16 @@ class SystemDistributor:
 
             if client_distributor is not None:
                 client_distributor.add_op(obj, op)
-
             return
+
+        if isinstance(op, GenericProtocolBufferOp):
+            #ts4mp_log("ops", op.type_constant)
+            if op.type_constant == Operation.SELECT_CAREER_UI:
+                #ts4mp_log("ops", dir(op.protocol_buffer))
+                #s4mp_log("ops", type(op.protocol_buffer))
+                if isinstance(op.protocol_buffer, CareerSelectionUI):
+                    target_client_distributor = self.get_distributor_with_active_sim_matching_sim_id(obj.id)
+                    target_client_distributor.add_op(obj, op)
 
         self.journal.add(obj, op)
 
