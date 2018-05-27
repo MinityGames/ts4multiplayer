@@ -1,7 +1,7 @@
 import os
 import re
 from threading import Lock
-
+import time
 import omega
 import services
 from server_commands.clock_commands import set_speed, request_pause, unrequest_pause, toggle_pause_unpause
@@ -88,10 +88,18 @@ def get_file_matching_name(name):
 
     return (file_path, file_name)
 
+time_since_last_update = time.time()
+
 
 # TODO: Any kind of documentation for any of this so it's easier to understand in a year?
 def client_sync():
     ts4mp_log("locks", "acquiring incoming lock 1")
+    global time_since_last_update
+
+    if time.time() - time_since_last_update > 0.1:
+        time_since_last_update = time.time()
+    else:
+        return
     ts4mp_log("simulate", "Syncing client.")
 
     with incoming_lock:
