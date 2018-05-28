@@ -12,6 +12,8 @@ import game_services
 import time_service
 import time
 import ts4mp.core.mp_essential
+from server_commands.career_commands import find_career, select_career
+
 
 from time_service import logger
 from ts4mp.core.csn import mp_chat
@@ -41,6 +43,8 @@ COMMAND_FUNCTIONS = {
     'ui.dialog.pick_result'           : ui_dialog_pick_result,
     'ui.dialog.text_input'            : ui_dialog_text_input,
     'lighting.set_color_and_intensity': set_color_and_intensity,
+    "careers.find_career"             : find_career,
+    "careers.select"                  : select_career
 }
 
 
