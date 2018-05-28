@@ -22,6 +22,7 @@ from ts4mp.debug.log import ts4mp_log
 from ts4mp.core.mp import is_client
 from ts4mp.core.mp_essential import Message, outgoing_lock, outgoing_commands, client_sync, server_sync
 from ts4mp.utils.native.undecorated import undecorated
+from server_commands.argument_helpers import  RequiredTargetParam
 
 COMMAND_FUNCTIONS = {
     'interactions.has_choices'        : has_choices,
@@ -88,8 +89,13 @@ def wrapper_client(func, *args, **kwargs):
 
     with outgoing_lock:
         # TODO: You should not be referring to a global variable that is in a different module
-        ts4mp_log("arg_handler", "\n" + str(func.__name__) + ", " + str(args) + "  " + str(kwargs), force=False)
-        outgoing_commands.append("\n" + str(func.__name__) + ", " + str(args) + "  " + str(kwargs))
+        parsed_args = []
+        for arg in args:
+            if isinstance(arg, RequiredTargetParam):
+                arg = arg.target_id
+            parsed_args.append(arg)
+        ts4mp_log("arg_handler", "\n" + str(func.__name__) + ", " + str(parsed_args) + "  " + str(kwargs), force=False)
+        outgoing_commands.append("\n" + str(func.__name__) + ", " + str(parsed_args) + "  " + str(kwargs))
 
         def do_nothing():
             pass
