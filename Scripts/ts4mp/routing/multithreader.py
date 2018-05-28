@@ -16,15 +16,19 @@ from ui.ui_dialog_notification import UiDialogNotification
 
 def show_notif(time):
     try:
-        notification = UiDialogNotification.TunableFactory().default(services.get_active_sim(), text=lambda **_: LocalizationHelperTuning.get_raw_text("Path took: {} ms".format(time * 1000)))
+        notification = UiDialogNotification.TunableFactory().default(services.get_active_sim(), text=lambda **_: LocalizationHelperTuning.get_raw_text("Total time spent so far: {} ms".format(time * 1000)))
         notification.show_dialog()
 
     except Exception as e:
         ts4mp_log("errors", str(e))
 
+
+total_time = 0
 def archive_plan(planner, path, ticks, time):
+    global total_time
+    total_time += time
     if time > 0.01:
-        show_notif(time)
+        show_notif(total_time)
     ts4mp_log("Path plan time", "Plan Time, Ticks: {}, {}".format(time, ticks))
 
 import services
@@ -41,6 +45,7 @@ cloud_paths = []
 from ts4mp.debug.log import ts4mp_log
 
 
+paths_enabled = True
 
 class Timer():
 
@@ -77,7 +82,7 @@ def generate_path(self, timeline):
                     waypoint.group = waypoint_group
                     self.path.add_waypoint(waypoint)
             self.sim.routing_component.on_plan_path(self.route.goals, True)
-            if True:
+            if paths_enabled:
                 if self.path.nodes.make_path() is True:
                     plan_in_progress = True
 
@@ -101,13 +106,13 @@ def generate_path(self, timeline):
             else:
                 try:
                     #ts4mp_log("errors", dir(self.path.nodes))
-                    ts4mp_log("errors", dir(goal))
                     routing_location = routing.Location(goal.position, goal.orientation,
                                                         goal.routing_surface_id)
                     walkstyle = sims4.hash_util.hash32("walk")
 
                     self.path.nodes.add_node(routing_location, 0, 0, walkstyle)
-                    self.path.nodes.add_node(routing_location, 1, 1, walkstyle)
+                    self.path.nodes.add_node(routing_location, 1, 0, walkstyle)
+
 
                 except Exception as e:
                     ts4mp_log("errors", str(e))
@@ -129,36 +134,6 @@ def generate_path(self, timeline):
             if gsi_handlers.routing_handlers.archiver.enabled:
                 gsi_handlers.routing_handlers.archive_plan(self.sim, self.path, ticks, (time.time() - start_time))
             num_nodes = len(new_path.nodes)
-            if num_nodes > 0:
-                start_index = 0
-                current_index = 0
-                for n in self.path.nodes:
-                    if n.portal_object_id != 0:
-                        portal_object = services.object_manager(services.current_zone_id()).get(n.portal_object_id)
-                        if portal_object is not None and portal_object.split_path_on_portal(n.portal_id):
-                            new_path.nodes.clip_nodes(start_index, current_index)
-                            start_index = current_index + 1
-                            if gsi_handlers.routing_handlers.archiver.enabled:
-                                gsi_handlers.routing_handlers.archive_plan(self.sim, new_path, ticks, (services.time_service().sim_now - start_time).in_real_world_seconds())
-                            if start_index < num_nodes:
-                                new_route = routing.Route(self.route.origin, self.route.goals, additional_origins=self.route.origins, routing_context=self.route.context)
-                                new_route.path.copy(self.route.path)
-                                next_path = routing.Path(self.path.sim, new_route)
-                                next_path.status = self.path.status
-                                next_path._start_ids = self.path._start_ids
-                                next_path._goal_ids = self.path._goal_ids
-                                new_path.next_path = next_path
-                                new_path.portal = portal_object
-                                new_path.portal_id = n.portal_id
-                                new_path = next_path
-                            else:
-                                new_path = None
-                    current_index = current_index + 1
-                if new_path is not None and start_index > 0:
-                    end_index = current_index - 1
-                    new_path.nodes.clip_nodes(start_index, end_index)
-                    if gsi_handlers.routing_handlers.archiver.enabled:
-                        gsi_handlers.routing_handlers.archive_plan(self.sim, new_path, ticks, (services.time_service().sim_now - start_time).in_real_world_seconds())
             self.route = result_path.route
             self.path = result_path
             self.sim.routing_component.on_plan_path(self.route.goals, False)
@@ -169,6 +144,24 @@ def generate_path(self, timeline):
         self.path.set_status(routing.Path.PLANSTATUS_READY)
     else:
         self.path.set_status(routing.Path.PLANSTATUS_FAILED)
+
+def selected_start(self):
+    (start_id, _) = self.nodes.selected_start_tag_tuple
+    if start_id == 0:
+        for thing in self._start_ids:
+            return self._start_ids[thing]
+    return self._start_ids[start_id]
+
+def selected_goal(self):
+    (goal_id, _) = self.nodes.selected_tag_tuple
+    if goal_id == 0:
+        for thing in self._goal_ids:
+            return self._goal_ids[thing]
+    return self._goal_ids[goal_id]
+
+
+routing.Path.selected_start = property(selected_start)
+routing.Path.selected_goal = property(selected_goal)
 
 interactions.utils.routing.PlanRoute.generate_path = generate_path
 from sims4.commands import CommandType
@@ -355,6 +348,16 @@ def simulate(self, until, max_elements=MAX_ELEMENTS, max_time_ms=None):
         ts4mp_log("errors", str(e))
 import distributor
 import math
+
+@sims4.commands.Command('toggle_paths', command_type = CommandType.Live)
+def toggle_paths(_connection=None):
+    global paths_enabled
+    output = sims4.commands.CheatOutput(_connection)
+    paths_enabled = not paths_enabled
+    if paths_enabled:
+        output("Enabled pathfinding")
+        return
+    output("Disabled pathfinding")
 @sims4.commands.Command('sims.test_path', command_type = CommandType.Live)
 def test_path(walkstyle_name='walk', _connection=None):
     obj = services.get_active_sim()
