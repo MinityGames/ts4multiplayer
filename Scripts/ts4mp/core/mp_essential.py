@@ -35,8 +35,8 @@ PERFORM_COMMAND_FUNCTIONS = {
     "ui_dialog_pick_result"   : ui_dialog_pick_result,
     "ui_dialog_text_input"    : ui_dialog_text_input,
     "set_color_and_intensity" : set_color_and_intensity,
-    "careers.find_career"     : find_career,
-    "careers.select"          : select_career
+    "find_career"            : find_career,
+    "select_career"          : select_career
 }
 
 # TODO: Consider having a class that holds these instead of them being out in the open
