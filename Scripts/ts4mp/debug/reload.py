@@ -1,4 +1,5 @@
 import os.path
+import os
 
 import sims4.commands
 from sims4 import reload
@@ -10,11 +11,15 @@ def reload_maslow(module: str, _connection=None):
     output = sims4.commands.CheatOutput(_connection)
 
     try:
-        dirname = get_sims_documents_directory()
-        filename = os.path.join(dirname, module) + ".py"
+        dirname = get_sims_documents_directory() + "Mods/ts4multiplayer"
+        #filename = os.path.join(dirname, module) + ".py"
 
-        output("Reloading {}".format(filename))
-
+        output("Reloading {}".format(module))
+        for root, dirnames, filenames in os.walk(dirname):
+            for a in range(0, len(filenames)):
+                if filenames[a].split("\n")[-1] == module + ".py":
+                    # output(filenames[a])
+                    filename = filenames[a] + ".py"
         reloaded_module = reload.reload_file(filename)
 
         if reloaded_module is not None:

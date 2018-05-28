@@ -151,7 +151,7 @@ def server_sync():
             parsed_args = list()
 
             for arg_index in range(1, len(current_line)):
-                arg = current_line[arg_index].replace(')', '').replace('{}', '').replace('(', '')
+                arg = current_line[arg_index].replace(')', '').replace('{}', '').replace('(', '').replace("[", "").replace("]", "")
 
                 if "'" not in arg:
                     arg = ALPHABETIC_REGEX.sub('', arg)
