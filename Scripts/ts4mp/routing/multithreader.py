@@ -15,14 +15,23 @@ from sims4.localization import LocalizationHelperTuning
 from ui.ui_dialog_notification import UiDialogNotification
 
 def show_notif(time):
+    return
     try:
-        notification = UiDialogNotification.TunableFactory().default(services.get_active_sim(), text=lambda **_: LocalizationHelperTuning.get_raw_text("Total time spent so far: {} ms".format(time * 1000)))
+        notification = UiDialogNotification.TunableFactory().default(services.get_active_sim(), text=lambda **_: LocalizationHelperTuning.get_raw_text("Total time spent so far: {} s".format(time)))
         notification.show_dialog()
 
     except Exception as e:
         ts4mp_log("errors", str(e))
 
+def show_notif2(time):
+    return
+    notification = UiDialogNotification.TunableFactory().default(services.get_active_sim(), text=lambda **_: LocalizationHelperTuning.get_raw_text("Transition time so far: {} s".format(time)))
+    notification.show_dialog()
 
+
+def show_notif3(time):
+    notification = UiDialogNotification.TunableFactory().default(services.get_active_sim(), text=lambda **_: LocalizationHelperTuning.get_raw_text("Autonomy time: {} s".format(time)))
+    notification.show_dialog()
 total_time = 0
 def archive_plan(planner, path, ticks, time):
     global total_time
@@ -45,10 +54,9 @@ cloud_paths = []
 from ts4mp.debug.log import ts4mp_log
 
 
-paths_enabled = True
-
+paths_enabled = False
+total_p_time = 0
 class Timer():
-
     def __init__(self, name):
         self.name = name
 
@@ -56,9 +64,20 @@ class Timer():
         self.t1 = time.time()
 
     def __exit__(self, *args):
+        global total_p_time
+
         self.t2 = time.time()
-        # if (self.t2 - self.t1) * 1000 > 50:
-        ts4mp_log("Command path plan", "Command path plan time: {}".format((self.t2 - self.t1) * 1000))
+        if self.name == "Transition Sequence":
+
+            total_p_time += self.t2 - self.t1
+
+        if (self.t2 - self.t1) * 1000 > 20:
+            if self.name == "Transition Sequence":
+                show_notif2(total_p_time)
+                
+        if self.name == "Autonomy":
+                show_notif3( (self.t2 - self.t1) )
+        ts4mp_log(self.name, "time: {}".format((self.t2 - self.t1) * 1000))
 
 import _pathing
 def generate_path(self, timeline):
@@ -106,12 +125,14 @@ def generate_path(self, timeline):
             else:
                 try:
                     #ts4mp_log("errors", dir(self.path.nodes))
+                    routing_location_start = routing.Location(origin.position, origin.orientation,
+                                                        origin.routing_surface_id)
                     routing_location = routing.Location(goal.position, goal.orientation,
                                                         goal.routing_surface_id)
                     walkstyle = sims4.hash_util.hash32("walk")
 
-                    self.path.nodes.add_node(routing_location, 0, 0, walkstyle)
-                    self.path.nodes.add_node(routing_location, 1, 0, walkstyle)
+                    self.path.nodes.add_node(routing_location_start, 0, 0, walkstyle)
+                    self.path.nodes.add_node(routing_location, 5, 0, walkstyle)
 
 
                 except Exception as e:
@@ -252,6 +273,7 @@ def simulate(self, until, max_elements=MAX_ELEMENTS, max_time_ms=None):
         if max_time_ms is not None:
             start_time = time.monotonic()
             end_time = start_time + max_time_ms/1000
+            end_time = None
         else:
             end_time = None
         early_exit = False
@@ -406,3 +428,63 @@ def test_path(walkstyle_name='walk', _connection=None):
     except Exception as e:
         ts4mp_log("errors", str(e))
 scheduling.Timeline.simulate = simulate
+import interactions.base.super_interaction
+from autonomy.autonomy_util import AutonomyAffordanceTimes
+
+def _estimate_distance(self, ignore_all_other_sis):
+    with Timer("Transition Sequence"):
+        with AutonomyAffordanceTimes.profile_section(AutonomyAffordanceTimes.AutonomyAffordanceTimesType.TRANSITION_SEQUENCE):
+            self._generate_connectivity(ignore_all_other_sis=ignore_all_other_sis)
+    with AutonomyAffordanceTimes.profile_section(AutonomyAffordanceTimes.AutonomyAffordanceTimesType.DISTANCE_ESTIMATE):
+        try:
+            result = self.transition.estimate_distance_for_current_progress()
+        finally:
+            if ignore_all_other_sis:
+                self.transition = None
+        return result
+        
+def estimate_final_path_distance(self, timeline, ignore_all_other_sis):
+    with Timer("Transition Sequence"):
+        with AutonomyAffordanceTimes.profile_section(AutonomyAffordanceTimes.AutonomyAffordanceTimesType.TRANSITION_SEQUENCE):
+            yield self._generate_routes(timeline, ignore_all_other_sis=ignore_all_other_sis)
+    with AutonomyAffordanceTimes.profile_section(AutonomyAffordanceTimes.AutonomyAffordanceTimesType.DISTANCE_ESTIMATE):
+        try:
+            result = self.transition.estimate_distance_for_current_progress()
+        finally:
+            if ignore_all_other_sis:
+                self.transition = None
+        return result
+@classmethod
+def update_adaptive_speed(cls):
+    return
+interactions.base.super_interaction.SuperInteraction._estimate_distance = _estimate_distance
+interactions.base.super_interaction.SuperInteraction.estimate_final_path_distance = estimate_final_path_distance
+import adaptive_clock_speed
+adaptive_clock_speed.AdaptiveClockSpeed.update_adaptive_speed = update_adaptive_speed
+import autonomy.autonomy_exceptions
+import autonomy.autonomy_service
+def _update_gen(self, timeline):
+    with Timer("Autonomy"):
+        while self.queue:
+            cur_request = self.queue.pop(0)
+            cur_request.autonomy_mode.set_process_start_time()
+            try:
+                next_sim = cur_request.sim
+                if next_sim is not None:
+                    self._active_sim = next_sim
+                    yield from self._execute_request_gen(timeline, cur_request, self.MAX_SECONDS_PER_LOOP)
+                else:
+                    pass
+            except autonomy.autonomy_exceptions.AutonomyExitException:
+                pass
+            finally:
+                cur_request.sleep_element.trigger_soft_stop()
+                cur_request.sleep_element = None
+                self._update_automation_load_test()
+                self._check_for_automated_performance_test_sim()
+                self._active_sim = None
+            sleep_element = element_utils.sleep_until_next_tick_element()
+            yield timeline.run_child(sleep_element)
+        
+        
+autonomy.autonomy_service.AutonomyService._update_gen = _update_gen
