@@ -30,7 +30,7 @@ def show_notif2(time):
 
 
 def show_notif3(time):
-    notification = UiDialogNotification.TunableFactory().default(services.get_active_sim(), text=lambda **_: LocalizationHelperTuning.get_raw_text("Autonomy time: {} s".format(time)))
+    notification = UiDialogNotification.TunableFactory().default(services.get_active_sim(), text=lambda **_: LocalizationHelperTuning.get_raw_text("Autonomy time: {0:.2} s".format(time)))
     notification.show_dialog()
 total_time = 0
 def archive_plan(planner, path, ticks, time):
