@@ -150,7 +150,6 @@ def server_sync():
                 continue
 
             parsed_args = list()
-
             for arg_index in range(1, len(current_line)):
                 arg = current_line[arg_index].replace(')', '').replace('{}', '').replace('(', '').replace("[", "").replace("]", "")
 
@@ -159,8 +158,11 @@ def server_sync():
                     arg = arg.replace('<._ = ', '').replace('>', '')
 
                 parsed_arg = _parse_arg(arg)
-                if arg_index == 1 and function_name == "find_career":
-                    parsed_arg = RequiredTargetParam(parsed_arg)
+                #ts4mp_log("parsing args", "{} {} {}".format(arg_index, parsed_arg, function_name))
+                #ts4mp_log("parsing args", "{}".format(type(parsed_arg)))
+
+                if arg_index == 1 and function_name.strip() == "find_career":
+                    parsed_arg = RequiredTargetParam(str(parsed_arg))
                 parsed_args.append(parsed_arg)
 
             # set connection to other client
