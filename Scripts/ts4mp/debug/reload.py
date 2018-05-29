@@ -19,7 +19,7 @@ def reload_maslow(module: str, _connection=None):
             for a in range(0, len(filenames)):
                 if filenames[a].split("\n")[-1] == module + ".py":
                     # output(filenames[a])
-                    filename = filenames[a] + ".py"
+                    filename = filenames[a]
         reloaded_module = reload.reload_file(filename)
 
         if reloaded_module is not None:
