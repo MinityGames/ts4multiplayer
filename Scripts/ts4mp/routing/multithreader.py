@@ -546,13 +546,17 @@ def _dont_timeslice_gen(timeline):
     return False
 
     yield None
+    
+    
+
 from autonomy.autonomy_interaction_priority import AutonomyInteractionPriority
 import itertools
 import date_and_time
 import random
 from autonomy.autonomy_modes import AutonomyMode
 timeslice_logger = sims4.log.Logger('AutonomyTimeslice', default_owner='rez')
-
+def block_until_done(timeline):
+    return False
 import random
 def _run_gen(self, timeline, timeslice):
     try:
@@ -608,11 +612,11 @@ def _run_gen(self, timeline, timeslice):
             best_threshold = None
             while True:
                 self._inventory_posture_score_cache = {}
-                objects_to_score = list(self._request.objects_to_score_gen(self._actively_scored_motives))
+                objects_to_score = self._request.objects_to_score_gen(self._actively_scored_motives)
                 ts4mp_log("stuff", "Objects to score: {}".format(len(objects_to_score)))
-                to_sample = min(len(objects_to_score), 10)
-                objects_to_score = WeakSet(random.sample(objects_to_score, to_sample))
-
+                #to_sample = min(len(objects_to_score), 10)
+                #objects_to_score = WeakSet(random.sample(objects_to_score, to_sample))
+                objects_to_score = WeakSet(objects_to_score)
                # objects_to_score = WeakSet(random.sample(self._request.objects_to_score_gen(self._actively_scored_motives, 5))
                 ts4mp_log("stuff", "Objects to score: {}".format(len(objects_to_score)))
                 while 1:
