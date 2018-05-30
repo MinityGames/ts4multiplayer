@@ -463,8 +463,33 @@ import adaptive_clock_speed
 adaptive_clock_speed.AdaptiveClockSpeed.update_adaptive_speed = update_adaptive_speed
 import autonomy.autonomy_exceptions
 import autonomy.autonomy_service
+
+log = ""
+trace_count = 0
+def tracefunc(frame, event, arg, indent=[0]):
+    global log 
+    global trace_count
+    
+
+    if event == "call":
+        indent[0] += 2
+        to_print =  "-" * indent[0] + "> call function " +  frame.f_code.co_name
+        log += to_print + "\n"
+    elif event == "return":
+        to_print =  "<" + "-" * indent[0] +  "exit function " + frame.f_code.co_name
+        log += to_print + "\n"
+
+        indent[0] -= 2
+        
+    if trace_count % 100000 == 0:
+        ts4mp_log("time", log)
+        
+    return tracefunc
+
+import sys
 def _update_gen(self, timeline):
     with Timer("Autonomy"):
+        sys.setprofile(tracefunc)
         while self.queue:
             cur_request = self.queue.pop(0)
             cur_request.autonomy_mode.set_process_start_time()
@@ -485,6 +510,9 @@ def _update_gen(self, timeline):
                 self._active_sim = None
             sleep_element = element_utils.sleep_until_next_tick_element()
             yield timeline.run_child(sleep_element)
+            sys.setprofile(None)
+
         
         
 autonomy.autonomy_service.AutonomyService._update_gen = _update_gen
+
