@@ -1,1 +1,3 @@
 I think the yield from self._run_gen in run_gen is timeslicing the function and every time it returns it's timed out
+
+score object interactions is slow

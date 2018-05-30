@@ -77,7 +77,9 @@ class Timer():
                 
         if self.name == "Autonomy":
                 show_notif3(self.t2 - self.t1) 
-        ts4mp_log(self.name, "time: {0:.2f}".format(self.t2 - self.t1))
+                
+        if (self.t2 - self.t1) * 1000 > 20:
+            ts4mp_log(self.name, "time: ,{0:.2f}".format(self.t2 - self.t1))
 
 import _pathing
 def generate_path(self, timeline):
@@ -610,16 +612,16 @@ def _run_gen(self, timeline, timeslice):
                         obj = objects_to_score.pop()
                     except KeyError:
                         break
-
-                    object_result, best_threshold = yield from self._score_object_interactions_gen(timeline, obj, timeslice_if_needed_gen, None, best_threshold)
-                    if self._gsi_objects is not None:
-                        self._gsi_objects.append(object_result.get_log_data())
-                    if not obj.is_sim:
-                        inventory_component = obj.inventory_component
-                        if inventory_component and inventory_component.should_score_contained_objects_for_autonomy and inventory_component.inventory_type not in self._inventory_posture_score_cache:
-                            best_threshold = yield from self._score_object_inventory_gen(timeline, inventory_component, timeslice_if_needed_gen, best_threshold)
-                        else:
-                            continue
+                    with Timer("Score Object Interactions"):
+                        object_result, best_threshold = yield from self._score_object_interactions_gen(timeline, obj, timeslice_if_needed_gen, None, best_threshold)
+                        if self._gsi_objects is not None:
+                            self._gsi_objects.append(object_result.get_log_data())
+                        if not obj.is_sim:
+                            inventory_component = obj.inventory_component
+                            if inventory_component and inventory_component.should_score_contained_objects_for_autonomy and inventory_component.inventory_type not in self._inventory_posture_score_cache:
+                                best_threshold = yield from self._score_object_inventory_gen(timeline, inventory_component, timeslice_if_needed_gen, best_threshold)
+                            else:
+                                continue
 
                 for aop_list in self._limited_affordances.values():
                     valid_aop_list = [aop_data for aop_data in aop_list if aop_data.aop.target is not None]
@@ -628,32 +630,38 @@ def _run_gen(self, timeline, timeslice):
                         final_aop_list = random.sample(valid_aop_list, self.NUMBER_OF_DUPLICATE_AFFORDANCE_TAGS_TO_SCORE)
                     else:
                         final_aop_list = valid_aop_list
-                    for aop_data in final_aop_list:
-                        interaction_result, interaction, route_time = yield from self._create_and_score_interaction(timeline, aop_data.aop, aop_data.inventory_type, best_threshold)
-                        if not interaction_result:
-                            if self._request.record_test_result is not None:
-                                self._request.record_test_result(aop_data.aop, '_create_and_score_interaction', interaction_result)
-                            if self._gsi_interactions is not None:
-                                self._gsi_interactions.append(interaction_result)
-                            continue
-                        _, best_threshold = self._process_scored_interaction(aop_data.aop, interaction, interaction_result, route_time, best_threshold)
+                        
+                    with Timer("Score AOPs"):
+
+                        for aop_data in final_aop_list:
+                            interaction_result, interaction, route_time = yield from self._create_and_score_interaction(timeline, aop_data.aop, aop_data.inventory_type, best_threshold)
+                            if not interaction_result:
+                                if self._request.record_test_result is not None:
+                                    self._request.record_test_result(aop_data.aop, '_create_and_score_interaction', interaction_result)
+                                if self._gsi_interactions is not None:
+                                    self._gsi_interactions.append(interaction_result)
+                                continue
+                            _, best_threshold = self._process_scored_interaction(aop_data.aop, interaction, interaction_result, route_time, best_threshold)
 
                 self._limited_affordances.clear()
                 if not motives_to_score:
                     break
-                self._formerly_scored_motives.update(self._actively_scored_motives)
-                variance_score = self._motive_scores[motives_to_score[0]]
-                for motive in self._found_motives:
-                    variance_score = max(variance_score, self._motive_scores[motive])
+                    
+                with Timer("Statistics to Score"):
 
-                variance_score *= AutonomyMode.FULL_AUTONOMY_STATISTIC_SCORE_VARIANCE
-                self._actively_scored_motives = {stat.stat_type for stat in itertools.takewhile(lambda desire: self._motive_scores[desire] >= variance_score, motives_to_score)}
-                if not self._actively_scored_motives:
-                    break
-                if self._found_valid_interaction:
-                    motives_to_score = []
-                else:
-                    motives_to_score = motives_to_score[len(self._actively_scored_motives):]
+                    self._formerly_scored_motives.update(self._actively_scored_motives)
+                    variance_score = self._motive_scores[motives_to_score[0]]
+                    for motive in self._found_motives:
+                        variance_score = max(variance_score, self._motive_scores[motive])
+
+                    variance_score *= AutonomyMode.FULL_AUTONOMY_STATISTIC_SCORE_VARIANCE
+                    self._actively_scored_motives = {stat.stat_type for stat in itertools.takewhile(lambda desire: self._motive_scores[desire] >= variance_score, motives_to_score)}
+                    if not self._actively_scored_motives:
+                        break
+                    if self._found_valid_interaction:
+                        motives_to_score = []
+                    else:
+                        motives_to_score = motives_to_score[len(self._actively_scored_motives):]
 
             final_valid_interactions = None
             for i in AutonomyInteractionPriority:
@@ -669,7 +677,7 @@ def _run_gen(self, timeline, timeslice):
                 self._request.gsi_data = {GSIDataKeys.COMMODITIES_KEY: self._motive_scores.values(),  GSIDataKeys.AFFORDANCE_KEY: self._gsi_interactions,  GSIDataKeys.PROBABILITY_KEY: [],  GSIDataKeys.OBJECTS_KEY: self._gsi_objects, 
                  GSIDataKeys.MIXER_PROVIDER_KEY: None, 
                  GSIDataKeys.MIXERS_KEY: [],  GSIDataKeys.REQUEST_KEY: self._request.get_gsi_data()}
-            ts4mp_log("FullAutonomy", str(final_valid_interactions))
+            #ts4mp_log("FullAutonomy", str(final_valid_interactions))
 
             return final_valid_interactions    
     except Exception as e:
