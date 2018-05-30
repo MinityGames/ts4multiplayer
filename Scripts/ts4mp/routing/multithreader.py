@@ -77,7 +77,7 @@ class Timer():
                 
         if self.name == "Autonomy":
                 show_notif3( (self.t2 - self.t1) )
-        ts4mp_log(self.name, "time: {}".format((self.t2 - self.t1) * 1000))
+        ts4mp_log(self.name, "{}- time: {}".format(time.ctime(), (self.t2 - self.t1) * 1000))
 
 import _pathing
 def generate_path(self, timeline):
@@ -463,6 +463,7 @@ import adaptive_clock_speed
 adaptive_clock_speed.AdaptiveClockSpeed.update_adaptive_speed = update_adaptive_speed
 import autonomy.autonomy_exceptions
 import autonomy.autonomy_service
+import autonomy.autonomy_modes
 
 log = ""
 trace_count = 0
@@ -489,7 +490,7 @@ def tracefunc(frame, event, arg, indent=[0]):
 import sys
 def _update_gen(self, timeline):
     with Timer("Autonomy"):
-        sys.setprofile(tracefunc)
+        #sys.setprofile(None)
         while self.queue:
             cur_request = self.queue.pop(0)
             cur_request.autonomy_mode.set_process_start_time()
@@ -510,9 +511,13 @@ def _update_gen(self, timeline):
                 self._active_sim = None
             sleep_element = element_utils.sleep_until_next_tick_element()
             yield timeline.run_child(sleep_element)
-            sys.setprofile(None)
+            #sys.setprofile(None)
 
-        
+def run_gen(self, timeline, timeslice):
+    with Timer("Modes"):
+        self._motive_scores = self._score_motives()
+        result = yield from self._run_gen(timeline, timeslice)
+        return result
         
 autonomy.autonomy_service.AutonomyService._update_gen = _update_gen
-
+autonomy.autonomy_modes.AutonomyMode.run_gen = run_gen
