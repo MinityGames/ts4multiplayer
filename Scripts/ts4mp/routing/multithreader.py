@@ -30,7 +30,7 @@ def show_notif2(time):
 
 
 def show_notif3(time):
-    notification = UiDialogNotification.TunableFactory().default(services.get_active_sim(), text=lambda **_: LocalizationHelperTuning.get_raw_text("Autonomy time: {0:.2} s".format(time)))
+    notification = UiDialogNotification.TunableFactory().default(services.get_active_sim(), text=lambda **_: LocalizationHelperTuning.get_raw_text("Autonomy time: {0:.4} s".format(time)))
     notification.show_dialog()
 total_time = 0
 def archive_plan(planner, path, ticks, time):
@@ -553,8 +553,11 @@ import random
 from autonomy.autonomy_modes import AutonomyMode
 timeslice_logger = sims4.log.Logger('AutonomyTimeslice', default_owner='rez')
 
+import random
 def _run_gen(self, timeline, timeslice):
     try:
+        #ts4mp_log("potential", "start")
+
         if self._should_log(self._sim):
             logger.debug('Processing {}', self._sim)
         gsi_enabled_at_start = gsi_handlers.autonomy_handlers.archiver.enabled
@@ -605,7 +608,13 @@ def _run_gen(self, timeline, timeslice):
             best_threshold = None
             while True:
                 self._inventory_posture_score_cache = {}
-                objects_to_score = WeakSet(self._request.objects_to_score_gen(self._actively_scored_motives))
+                objects_to_score = list(self._request.objects_to_score_gen(self._actively_scored_motives))
+                ts4mp_log("stuff", "Objects to score: {}".format(len(objects_to_score)))
+                to_sample = min(len(objects_to_score), 10)
+                objects_to_score = WeakSet(random.sample(objects_to_score, to_sample))
+
+               # objects_to_score = WeakSet(random.sample(self._request.objects_to_score_gen(self._actively_scored_motives, 5))
+                ts4mp_log("stuff", "Objects to score: {}".format(len(objects_to_score)))
                 while 1:
                     yield from timeslice_if_needed_gen(timeline)
                     try:
@@ -625,6 +634,8 @@ def _run_gen(self, timeline, timeslice):
 
                 for aop_list in self._limited_affordances.values():
                     valid_aop_list = [aop_data for aop_data in aop_list if aop_data.aop.target is not None]
+                    ts4mp_log("stuff", "Aops to score: {}".format(len(valid_aop_list)))
+
                     num_aops = len(valid_aop_list)
                     if num_aops > self.NUMBER_OF_DUPLICATE_AFFORDANCE_TAGS_TO_SCORE:
                         final_aop_list = random.sample(valid_aop_list, self.NUMBER_OF_DUPLICATE_AFFORDANCE_TAGS_TO_SCORE)
@@ -678,13 +689,51 @@ def _run_gen(self, timeline, timeslice):
                  GSIDataKeys.MIXER_PROVIDER_KEY: None, 
                  GSIDataKeys.MIXERS_KEY: [],  GSIDataKeys.REQUEST_KEY: self._request.get_gsi_data()}
             #ts4mp_log("FullAutonomy", str(final_valid_interactions))
-
+            #ts4mp_log("potential", "end")
             return final_valid_interactions    
     except Exception as e:
         ts4mp_log("FullAutonomy", str(e))
         ts4mp_log("FullAutonomy", 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno))
 
+import objects.script_object 
+from carry.carry_utils import get_carried_objects_gen
 
+def potential_interactions(self, context, get_interaction_parameters=None, allow_forwarding=True, **kwargs):
+    try:
+        count = 0
+        aops = []
+        for affordance in self.super_affordances(context):
+            if not self.supports_affordance(affordance):
+                pass
+            if get_interaction_parameters is not None:
+                interaction_parameters = get_interaction_parameters(affordance, kwargs)
+            else:
+                interaction_parameters = kwargs
+            for aop in affordance.potential_interactions(self, context, **interaction_parameters):
+                count += 1
+                aops.append(aop)
+                yield aop
+        #ts4mp_log("potential", "{} has: {} affordances: {}".format(self, count, aops))
+        if allow_forwarding and self.allow_aop_forward():
+            for aop in self._search_forwarded_interactions(context, get_interaction_parameters=get_interaction_parameters, **kwargs):
+                yield aop
+        if self.parent is not None:
+            yield from self.parent.child_provided_aops_gen(self, context, **kwargs)
+        club_service = services.get_club_service()
+        if club_service is not None:
+            for (club, affordance) in club_service.provided_clubs_and_interactions_gen(context):
+                aop = AffordanceObjectPair(affordance, self, affordance, None, associated_club=club, **kwargs)
+                if aop.test(context):
+                    yield aop
+        context_sim = context.sim
+        if context_sim is not None and context_sim.posture_state is not None:
+            for (_, _, carried_object) in get_carried_objects_gen(context_sim):
+                yield from carried_object.get_provided_aops_gen(self, context, **kwargs)
+    except Exception as e:
+        ts4mp_log("potential", e)
+        
+        
+objects.script_object.ScriptObject.potential_interactions = potential_interactions
 autonomy.autonomy_service.AutonomyService._update_gen = _update_gen
 autonomy.autonomy_modes.AutonomyMode.run_gen = run_gen
 autonomy.autonomy_modes.FullAutonomy._run_gen = _run_gen
