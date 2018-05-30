@@ -77,7 +77,7 @@ class Timer():
                 
         if self.name == "Autonomy":
                 show_notif3( (self.t2 - self.t1) )
-        ts4mp_log(self.name, "{}- time: {}".format(time.ctime(), (self.t2 - self.t1) * 1000))
+        ts4mp_log(self.name, "time: {}".format((self.t2 - self.t1) * 1000))
 
 import _pathing
 def generate_path(self, timeline):
@@ -514,10 +514,15 @@ def _update_gen(self, timeline):
             #sys.setprofile(None)
 
 def run_gen(self, timeline, timeslice):
+
+    self._motive_scores = self._score_motives()
+    #ts4mp_log("Modes", str(self._motive_scores))
+    generat = self._run_gen(timeline, timeslice)
     with Timer("Modes"):
-        self._motive_scores = self._score_motives()
-        result = yield from self._run_gen(timeline, timeslice)
-        return result
+        for value in generat:
+            ts4mp_log("Modes", value)
+    result = yield from self._run_gen(timeline, timeslice)
+    return result
         
 autonomy.autonomy_service.AutonomyService._update_gen = _update_gen
 autonomy.autonomy_modes.AutonomyMode.run_gen = run_gen

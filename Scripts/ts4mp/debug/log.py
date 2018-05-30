@@ -1,5 +1,5 @@
 import os
-
+import time
 from ts4mp.core.mp_utils import get_sims_documents_directory
 
 DEBUG_MODE = True
@@ -20,4 +20,4 @@ def ts4mp_log(filename, string, force=False):
         os.makedirs(logs_directory)
 
     with open("{}{}.txt".format(logs_directory, filename), 'a') as stream:
-        stream.write(str(string) + "\n")
+        stream.write("{} - {} {}".format(time.ctime(), str(string),  "\n"))
