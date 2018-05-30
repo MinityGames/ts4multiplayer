@@ -1,17 +1,1 @@
 I think the yield from self._run_gen in run_gen is timeslicing the function and every time it returns it's timed out
-
-score object interactions is slow
-
-scoring object aops is slow as it tests every interaction on each potential object
-
-hierarchial interactions?
-
-for sim that needs to have autonomy run:
-    get each need that needs to be satisfied
-    if there are needs to be satisfied:
-            for each object in the world that satisfies at least one need:
-                for each interaction on the object:
-                    score the interaction
-                    test if the interaction can run
-    
-    :somewhat random interaction with the highest score gets selected as the interaction
