@@ -547,97 +547,132 @@ import itertools
 import date_and_time
 import random
 from autonomy.autonomy_modes import AutonomyMode
+timeslice_logger = sims4.log.Logger('AutonomyTimeslice', default_owner='rez')
+
 def _run_gen(self, timeline, timeslice):
     try:
-        (self._actively_scored_motives, motives_to_score) = self._get_motives_to_score()
+        if self._should_log(self._sim):
+            logger.debug('Processing {}', self._sim)
+        gsi_enabled_at_start = gsi_handlers.autonomy_handlers.archiver.enabled
+        if gsi_enabled_at_start:
+            if self._gsi_objects is None:
+                self._gsi_objects = []
+            if self._gsi_interactions is None:
+                self._gsi_interactions = []
+        self._actively_scored_motives, motives_to_score = self._get_motives_to_score()
         if not self._actively_scored_motives and not self._request.object_list:
             return
-        self._motives_being_solved = self._get_all_motives_currently_being_solved()
-        if timeslice is None:
-            timeslice_if_needed_gen = _dont_timeslice_gen
         else:
-            start_time = time.clock()
+            self._motives_being_solved = self._get_all_motives_currently_being_solved()
+            if timeslice is None:
+                timeslice_if_needed_gen = _dont_timeslice_gen
+            else:
+                start_time = time.clock()
 
-            def timeslice_if_needed_gen(timeline):
-                nonlocal start_time
-                time_now = time.clock()
-                elapsed_time = time_now - start_time
-                if elapsed_time < timeslice:
-                    return False
-                if self._timestamp_when_timeslicing_was_removed is not None:
-                    enable_long_slice = False
-                else:
-                    total_elapsed_time = time_now - self._process_start_time
-                    if total_elapsed_time > self.MAX_REAL_SECONDS_UNTIL_TIMESLICING_IS_REMOVED:
-                        self._timestamp_when_timeslicing_was_removed = time_now
+                def timeslice_if_needed_gen(timeline):
+                    nonlocal start_time
+                    time_now = time.clock()
+                    elapsed_time = time_now - start_time
+                    if elapsed_time < timeslice:
+                        return False
+                    if self._timestamp_when_timeslicing_was_removed is not None:
                         enable_long_slice = False
                     else:
-                        enable_long_slice = True
-                start_time_now = time.time()
-                if enable_long_slice:
-                    sleep_element = element_utils.sleep_until_next_tick_element()
-                else:
-                    sleep_element = elements.SleepElement(date_and_time.TimeSpan(0))
-                yield timeline.run_child(sleep_element)
-                self._request.on_end_of_time_slicing(start_time_now)
-                if self._sim is None or not self._request.valid:
-                    self._clean_up()
-                    raise autonomy.autonomy_exceptions.AutonomyExitException()
-                start_time = time.clock()
-                return True
+                        total_elapsed_time = time_now - self._process_start_time
+                        if total_elapsed_time > self.MAX_REAL_SECONDS_UNTIL_TIMESLICING_IS_REMOVED:
+                            timeslice_logger.debug('Autonomy request for {} took too long; timeslicing is removed.', self._sim)
+                            self._timestamp_when_timeslicing_was_removed = time_now
+                            enable_long_slice = False
+                        else:
+                            enable_long_slice = True
+                        start_time_now = time.time()
+                        if enable_long_slice:
+                            sleep_element = element_utils.sleep_until_next_tick_element()
+                        else:
+                            sleep_element = elements.SleepElement(date_and_time.TimeSpan(0))
+                        yield timeline.run_child(sleep_element)
+                        self._request.on_end_of_time_slicing(start_time_now)
+                        if self._sim is None or not self._request.valid:
+                            self._clean_up()
+                            raise autonomy.autonomy_exceptions.AutonomyExitException()
+                        start_time = time.clock()
+                        return True
 
-        best_threshold = None
-        while True:
-            self._inventory_posture_score_cache = {}
-            objects_to_score = WeakSet(self._request.objects_to_score_gen(self._actively_scored_motives))
+            best_threshold = None
             while True:
-                yield from timeslice_if_needed_gen(timeline)
-                try:
-                    obj = objects_to_score.pop()
-                except KeyError:
+                self._inventory_posture_score_cache = {}
+                objects_to_score = WeakSet(self._request.objects_to_score_gen(self._actively_scored_motives))
+                while 1:
+                    yield from timeslice_if_needed_gen(timeline)
+                    try:
+                        obj = objects_to_score.pop()
+                    except KeyError:
+                        break
+
+                    object_result, best_threshold = yield from self._score_object_interactions_gen(timeline, obj, timeslice_if_needed_gen, None, best_threshold)
+                    if self._gsi_objects is not None:
+                        self._gsi_objects.append(object_result.get_log_data())
+                    if not obj.is_sim:
+                        inventory_component = obj.inventory_component
+                        if inventory_component and inventory_component.should_score_contained_objects_for_autonomy and inventory_component.inventory_type not in self._inventory_posture_score_cache:
+                            best_threshold = yield from self._score_object_inventory_gen(timeline, inventory_component, timeslice_if_needed_gen, best_threshold)
+                        else:
+                            continue
+
+                for aop_list in self._limited_affordances.values():
+                    valid_aop_list = [aop_data for aop_data in aop_list if aop_data.aop.target is not None]
+                    num_aops = len(valid_aop_list)
+                    if num_aops > self.NUMBER_OF_DUPLICATE_AFFORDANCE_TAGS_TO_SCORE:
+                        final_aop_list = random.sample(valid_aop_list, self.NUMBER_OF_DUPLICATE_AFFORDANCE_TAGS_TO_SCORE)
+                    else:
+                        final_aop_list = valid_aop_list
+                    for aop_data in final_aop_list:
+                        interaction_result, interaction, route_time = yield from self._create_and_score_interaction(timeline, aop_data.aop, aop_data.inventory_type, best_threshold)
+                        if not interaction_result:
+                            if self._request.record_test_result is not None:
+                                self._request.record_test_result(aop_data.aop, '_create_and_score_interaction', interaction_result)
+                            if self._gsi_interactions is not None:
+                                self._gsi_interactions.append(interaction_result)
+                            continue
+                        _, best_threshold = self._process_scored_interaction(aop_data.aop, interaction, interaction_result, route_time, best_threshold)
+
+                self._limited_affordances.clear()
+                if not motives_to_score:
                     break
-                (object_result, best_threshold) = yield from self._score_object_interactions_gen(timeline, obj, timeslice_if_needed_gen, None, best_threshold)
-                if not obj.is_sim:
-                    inventory_component = obj.inventory_component
-                    if inventory_component and inventory_component.should_score_contained_objects_for_autonomy and inventory_component.inventory_type not in self._inventory_posture_score_cache:
-                        best_threshold = yield from self._score_object_inventory_gen(timeline, inventory_component, timeslice_if_needed_gen, best_threshold)
-            for aop_list in self._limited_affordances.values():
-                valid_aop_list = [aop_data for aop_data in aop_list if aop_data.aop.target is not None]
-                num_aops = len(valid_aop_list)
-                if num_aops > self.NUMBER_OF_DUPLICATE_AFFORDANCE_TAGS_TO_SCORE:
-                    final_aop_list = random.sample(valid_aop_list, self.NUMBER_OF_DUPLICATE_AFFORDANCE_TAGS_TO_SCORE)
+                self._formerly_scored_motives.update(self._actively_scored_motives)
+                variance_score = self._motive_scores[motives_to_score[0]]
+                for motive in self._found_motives:
+                    variance_score = max(variance_score, self._motive_scores[motive])
+
+                variance_score *= AutonomyMode.FULL_AUTONOMY_STATISTIC_SCORE_VARIANCE
+                self._actively_scored_motives = {stat.stat_type for stat in itertools.takewhile(lambda desire: self._motive_scores[desire] >= variance_score, motives_to_score)}
+                if not self._actively_scored_motives:
+                    break
+                if self._found_valid_interaction:
+                    motives_to_score = []
                 else:
-                    final_aop_list = valid_aop_list
-                for aop_data in final_aop_list:
-                    (interaction_result, interaction, route_time) = yield from self._create_and_score_interaction(timeline, aop_data.aop, aop_data.inventory_type, best_threshold)        
-                    (_, best_threshold) = self._process_scored_interaction(aop_data.aop, interaction, interaction_result, route_time, best_threshold)
-            self._limited_affordances.clear()
-            if not motives_to_score:
-                break
-            self._formerly_scored_motives.update(self._actively_scored_motives)
-            variance_score = self._motive_scores[motives_to_score[0]]
-            for motive in self._found_motives:
-                variance_score = max(variance_score, self._motive_scores[motive])
-            variance_score *= AutonomyMode.FULL_AUTONOMY_STATISTIC_SCORE_VARIANCE
-            self._actively_scored_motives = {stat.stat_type for stat in itertools.takewhile(lambda desire: self._motive_scores[desire] >= variance_score, motives_to_score)}
-            if not self._actively_scored_motives:
-                break
-            if self._found_valid_interaction:
-                motives_to_score = []
-            else:
-                motives_to_score = motives_to_score[len(self._actively_scored_motives):]
-        final_valid_interactions = None
-        for i in AutonomyInteractionPriority:
-            if i not in self._valid_interactions:
-                pass
-            valid_interactions = self._valid_interactions[i]
-            if valid_interactions:
-                final_valid_interactions = valid_interactions
-                break
-        self._request.valid_interactions = final_valid_interactions
-        return final_valid_interactions        
+                    motives_to_score = motives_to_score[len(self._actively_scored_motives):]
+
+            final_valid_interactions = None
+            for i in AutonomyInteractionPriority:
+                if i not in self._valid_interactions:
+                    continue
+                valid_interactions = self._valid_interactions[i]
+                if valid_interactions:
+                    final_valid_interactions = valid_interactions
+                    break
+
+            self._request.valid_interactions = final_valid_interactions
+            if self._gsi_interactions is not None:
+                self._request.gsi_data = {GSIDataKeys.COMMODITIES_KEY: self._motive_scores.values(),  GSIDataKeys.AFFORDANCE_KEY: self._gsi_interactions,  GSIDataKeys.PROBABILITY_KEY: [],  GSIDataKeys.OBJECTS_KEY: self._gsi_objects, 
+                 GSIDataKeys.MIXER_PROVIDER_KEY: None, 
+                 GSIDataKeys.MIXERS_KEY: [],  GSIDataKeys.REQUEST_KEY: self._request.get_gsi_data()}
+            return final_valid_interactions    
     except Exception as e:
-        ts4mp_log("FullAutonomy", e)
+        ts4mp_log("FullAutonomy", str(e))
+        ts4mp_log("FullAutonomy", 'Error on line {}'.format(sys.exc_info()[-1].tb_lineno))
+
+
 autonomy.autonomy_service.AutonomyService._update_gen = _update_gen
 autonomy.autonomy_modes.AutonomyMode.run_gen = run_gen
 autonomy.autonomy_modes.FullAutonomy._run_gen = _run_gen
