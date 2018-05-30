@@ -17,7 +17,6 @@ Scripts/client_specific.txt
 Scripts/locks.txt
 .idea/Heuristics.iml
 *.xml
-*.txt
 >>>>>>> 69aa028428e3746666b02fe0ad20642eafaaa135
 Scripts/config.py
 Scripts/client

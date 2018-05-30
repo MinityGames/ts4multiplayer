@@ -513,15 +513,26 @@ def _update_gen(self, timeline):
             yield timeline.run_child(sleep_element)
             #sys.setprofile(None)
 
+def run_stuff(self, generat):
+    for thing in generat:
+        ts4mp_log("Modes", thing)
+
+        yield thing 
+
+            
 def run_gen(self, timeline, timeslice):
 
     self._motive_scores = self._score_motives()
     #ts4mp_log("Modes", str(self._motive_scores))
     generat = self._run_gen(timeline, timeslice)
+    ts4mp_log("Modes", type(self))
     with Timer("Modes"):
-        for value in generat:
-            ts4mp_log("Modes", value)
-    result = yield from self._run_gen(timeline, timeslice)
+        pass
+        # for value in generat:
+            # ts4mp_log("Modes", value)
+
+    #result = yield from self._run_gen(timeline, timeslice)
+    result = yield from run_stuff(self, generat)
     return result
         
 autonomy.autonomy_service.AutonomyService._update_gen = _update_gen
