@@ -76,8 +76,8 @@ class Timer():
                 show_notif2(total_p_time)
                 
         if self.name == "Autonomy":
-                show_notif3( (self.t2 - self.t1) )
-        ts4mp_log(self.name, "time: {}".format((self.t2 - self.t1) * 1000))
+                show_notif3(self.t2 - self.t1) 
+        ts4mp_log(self.name, "time: {0:.2f}".format(self.t2 - self.t1))
 
 import _pathing
 def generate_path(self, timeline):
