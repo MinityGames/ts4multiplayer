@@ -534,7 +534,9 @@ def run_gen(self, timeline, timeslice):
             # ts4mp_log("Modes", value)
 
     #result = yield from self._run_gen(timeline, timeslice)
-    result = yield from run_stuff(self, generat)
+    #result = yield from run_stuff(self, generat)
+    result = yield from self._run_gen(timeline, timeslice)
+
     return result
 from _weakrefset import WeakSet
   
@@ -667,6 +669,8 @@ def _run_gen(self, timeline, timeslice):
                 self._request.gsi_data = {GSIDataKeys.COMMODITIES_KEY: self._motive_scores.values(),  GSIDataKeys.AFFORDANCE_KEY: self._gsi_interactions,  GSIDataKeys.PROBABILITY_KEY: [],  GSIDataKeys.OBJECTS_KEY: self._gsi_objects, 
                  GSIDataKeys.MIXER_PROVIDER_KEY: None, 
                  GSIDataKeys.MIXERS_KEY: [],  GSIDataKeys.REQUEST_KEY: self._request.get_gsi_data()}
+            ts4mp_log("FullAutonomy", str(final_valid_interactions))
+
             return final_valid_interactions    
     except Exception as e:
         ts4mp_log("FullAutonomy", str(e))
