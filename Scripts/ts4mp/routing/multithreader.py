@@ -543,15 +543,12 @@ def _dont_timeslice_gen(timeline):
 
     yield None
 from autonomy.autonomy_interaction_priority import AutonomyInteractionPriority
-
+import itertools
+import date_and_time
+import random
 from autonomy.autonomy_modes import AutonomyMode
 def _run_gen(self, timeline, timeslice):
     try:
-        gsi_enabled_at_start = gsi_handlers.autonomy_handlers.archiver.enabled
-        if self._gsi_objects is None:
-            self._gsi_objects = []
-        if gsi_enabled_at_start and self._gsi_interactions is None:
-            self._gsi_interactions = []
         (self._actively_scored_motives, motives_to_score) = self._get_motives_to_score()
         if not self._actively_scored_motives and not self._request.object_list:
             return
@@ -572,7 +569,6 @@ def _run_gen(self, timeline, timeslice):
                 else:
                     total_elapsed_time = time_now - self._process_start_time
                     if total_elapsed_time > self.MAX_REAL_SECONDS_UNTIL_TIMESLICING_IS_REMOVED:
-                        timeslice_logger.debug('Autonomy request for {} took too long; timeslicing is removed.', self._sim)
                         self._timestamp_when_timeslicing_was_removed = time_now
                         enable_long_slice = False
                     else:
@@ -601,8 +597,6 @@ def _run_gen(self, timeline, timeslice):
                 except KeyError:
                     break
                 (object_result, best_threshold) = yield from self._score_object_interactions_gen(timeline, obj, timeslice_if_needed_gen, None, best_threshold)
-                if self._gsi_objects is not None:
-                    self._gsi_objects.append(object_result.get_log_data())
                 if not obj.is_sim:
                     inventory_component = obj.inventory_component
                     if inventory_component and inventory_component.should_score_contained_objects_for_autonomy and inventory_component.inventory_type not in self._inventory_posture_score_cache:
@@ -615,7 +609,7 @@ def _run_gen(self, timeline, timeslice):
                 else:
                     final_aop_list = valid_aop_list
                 for aop_data in final_aop_list:
-                    (interaction_result, interaction, route_time) = yield self._create_and_score_interaction(timeline, aop_data.aop, aop_data.inventory_type, best_threshold)        
+                    (interaction_result, interaction, route_time) = yield from self._create_and_score_interaction(timeline, aop_data.aop, aop_data.inventory_type, best_threshold)        
                     (_, best_threshold) = self._process_scored_interaction(aop_data.aop, interaction, interaction_result, route_time, best_threshold)
             self._limited_affordances.clear()
             if not motives_to_score:
