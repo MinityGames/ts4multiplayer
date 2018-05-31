@@ -513,5 +513,10 @@ def _update_gen(self, timeline):
             yield timeline.run_child(sleep_element)
             #sys.setprofile(None)
 
+from ts4mp.utils.native.injector import inject
 
+@inject(autonomy.autonomy_modes.FullAutonomy, "_calculate_interaction_score")
+def new_calculate_interaction_score(original, self, interaction, route_time, estimated_distance, must_change_posture, included_sis, optimistic):
+    with Timer("Calculate Interaction Time"):
+        return original(self, interaction, route_time, estimated_distance, must_change_posture, included_sis, optimistic)
 autonomy.autonomy_service.AutonomyService._update_gen = _update_gen
