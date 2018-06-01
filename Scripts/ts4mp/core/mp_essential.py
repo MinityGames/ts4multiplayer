@@ -152,8 +152,9 @@ def server_sync():
             parsed_args = list()
             for arg_index in range(1, len(current_line)):
                 arg = current_line[arg_index].replace(')', '').replace('{}', '').replace('(', '').replace("[", "").replace("]", "")
+                ts4mp_log("arg_handler", str(arg) + "\n", force=False)
 
-                if "'" not in arg:
+                if "'" not in arg and "True" not in arg and "False" not in arg:
                     arg = ALPHABETIC_REGEX.sub('', arg)
                     arg = arg.replace('<._ = ', '').replace('>', '')
 
@@ -166,7 +167,12 @@ def server_sync():
                 parsed_args.append(parsed_arg)
 
             # set connection to other client
-            client_id = 1000
+            ts4mp_log("arg_handler", function_name)
+            stripped_function_name = function_name.strip()
+            if stripped_function_name == "ui_dialog_pick_result" or stripped_function_name == "ui_dialog_respond":
+                 client_id = services.get_first_client().id
+            else:
+                client_id = 1000
             parsed_args[-1] = client_id
 
             function_to_execute = "{}({})".format(function_name, str(parsed_args).replace('[', '').replace(']', ''))
@@ -199,8 +205,21 @@ def _parse_arg(arg):
     #IT WILL SCREW UP OBJECT IDS AND VERY LONG NUMBERS, EVEN THOUGH IT SEEMS THAT THIS CODE IS COMPLETELY
     #USELESS. THE ASSIGNING OF THE VARIABLE TO ANOTHER VARIABLE CAUSES IT TO BREAK IF REMOVED
     new_arg = arg
+    bool_arg = None
+    if "True" in new_arg:
+        bool_arg = True
+    elif "False" in new_arg:
+        bool_arg = False
+    if bool_arg is not None:
+        return bool_arg
+
+
     orig_arg = new_arg.replace('"', "").replace("(", "").replace(")", "").replace("'", "").strip()
     new_arg = orig_arg
+    ts4mp_log("arg_handler", "First pass: " + str(new_arg) + "\n", force=False)
+
+
+
     try:
         new_arg = float(orig_arg)
 
@@ -210,6 +229,6 @@ def _parse_arg(arg):
             pass
     except BaseException:
         pass 
-    ts4mp_log("arg_handler", str(new_arg) + "\n", force=False)
+    ts4mp_log("arg_handler", "Second pass: " +  str(new_arg) + "\n", force=False)
 
     return new_arg
